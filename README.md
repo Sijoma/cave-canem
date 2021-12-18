@@ -1,11 +1,11 @@
 # Cave canem - Beware of the dog
 
 A fun little application that acts as a watchdog for Kubernetes rolebindings.
-If something happens on the front porch it starts barking.
+If something happens on the front porch it starts barking (slack notifications).
 
 ## Setup:
 
-1. Set environemnt variable
+1. Set environment variable to your webhook url
 ```
 export SLACK_WEBHOOK==https://hooks.slack.com/services/......
 ```
