@@ -1,0 +1,47 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "🐕 Cave Canem - Beware of the dog 🐶",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "{{ .Message }}"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Kind:*\n {{ .Rb.RoleRef.Kind }}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Name:*\n {{ .Rb.RoleRef.Name }}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {{range .Rb.Subjects}}
+        {
+          "type": "mrkdwn",
+          "text": "*Kind:*\n {{ .Kind }}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Name:*\n {{ .Name }}"
+        }
+        {{end}}
+      ]
+    }
+  ]
+}
