@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"github.com/sijoma/cave-canem/views"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -43,38 +46,61 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	log.Println(clientset)
 
-	startTime := time.Now()
+	mux := &sync.RWMutex{}
+	synced := false
+
+	log.Println("starting controller watch")
 	watchList := cache.NewListWatchFromClient(clientset.RbacV1().RESTClient(), "rolebindings", "", fields.Everything())
 	_, controller := cache.NewInformer(watchList, &v1.RoleBinding{}, time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				fmt.Printf("rolebinding added: %s \n", obj.(*v1.RoleBinding).Subjects)
-				// Only send notifications about rolebindings that are added 10 seconds after startup
-				if time.Since(startTime) > (time.Second * 10) {
-					views.AddRoleBinding("added", "test", obj.(*v1.RoleBinding))
+				mux.RLock()
+				defer mux.RUnlock()
+				if !synced {
+					return
 				}
+
+				log.Printf("rolebinding added: %s \n", obj.(*v1.RoleBinding).Subjects)
+				views.AddRoleBinding("added", "test", obj.(*v1.RoleBinding))
 			},
 			DeleteFunc: func(obj interface{}) {
-				fmt.Printf("rolebinding deleted: %s \n", obj)
-				if time.Since(startTime) > (time.Second * 10) {
-					views.AddRoleBinding("deleted", "test", obj.(*v1.RoleBinding))
+				mux.RLock()
+				defer mux.RUnlock()
+				if !synced {
+					return
 				}
+
+				log.Printf("rolebinding deleted: %s \n", obj)
+				views.AddRoleBinding("deleted", "test", obj.(*v1.RoleBinding))
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				fmt.Printf("rolebinding changed \n")
-				if time.Since(startTime) > (time.Second * 10) {
-					views.AddRoleBinding("modified - OLD", "test", oldObj.(*v1.RoleBinding))
-					views.AddRoleBinding("modified - NEW", "test", newObj.(*v1.RoleBinding))
+				mux.RLock()
+				defer mux.RUnlock()
+				if !synced {
+					return
 				}
+
+				log.Printf("rolebinding changed \n")
+				views.AddRoleBinding("modified - OLD", "test", oldObj.(*v1.RoleBinding))
+				views.AddRoleBinding("modified - NEW", "test", newObj.(*v1.RoleBinding))
 			},
 		},
 	)
-	stop := make(chan struct{})
-	defer close(stop)
-	go controller.Run(stop)
-	for {
-		time.Sleep(time.Second * 1)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	go controller.Run(ctx.Done())
+
+	isSynced := cache.WaitForCacheSync(ctx.Done(), controller.HasSynced)
+	mux.Lock()
+	synced = isSynced
+	mux.Unlock()
+
+	if !isSynced {
+		log.Fatal("failed to sync controller cache")
 	}
+
+	<-ctx.Done()
 }
