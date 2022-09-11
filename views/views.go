@@ -6,11 +6,12 @@ import (
 	"errors"
 	"html/template"
 	"io/fs"
-	v1 "k8s.io/api/rbac/v1"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	v1 "k8s.io/api/rbac/v1"
 )
 
 //go:embed slackMessageTemplates/*
@@ -22,6 +23,7 @@ type message struct {
 	Rb          *v1.RoleBinding
 }
 
+// AddRoleBinding renders a slack message template and sends the notification
 func AddRoleBinding(action string, cluster string, binding *v1.RoleBinding) {
 	m := message{
 		Message:     "Rolebinding " + action,
@@ -32,7 +34,7 @@ func AddRoleBinding(action string, cluster string, binding *v1.RoleBinding) {
 
 	err := sendSlackNotification(os.Getenv("SLACK_WEBHOOK"), tpl)
 	if err != nil {
-		panic(err)
+		log.Printf("error sending slack notification err: %s", err.Error())
 		return
 	}
 }
@@ -66,7 +68,7 @@ func renderTemplate(fs fs.FS, file string, args interface{}) bytes.Buffer {
 	t := template.Must(template.ParseFS(fs, file))
 	err := t.Execute(&tpl, args)
 	if err != nil {
-		log.Fatalln("Could not render view " + err.Error())
+		log.Printf("Could not render view err: %s", err.Error())
 	}
 	return tpl
 }
