@@ -29,7 +29,7 @@ func RolebindingWatcher(clientset *kubernetes.Clientset, log logr.Logger) {
 					return
 				}
 
-				log.Info("rolebinding added: %s \n", obj.(*rbacv1.RoleBinding).Subjects)
+				log.Info("rolebinding added: %s \n", "name", obj.(*rbacv1.RoleBinding).Subjects[0].Name)
 				views.AddRoleBinding("added", "test", obj.(*rbacv1.RoleBinding))
 			},
 			DeleteFunc: func(obj interface{}) {
@@ -39,7 +39,7 @@ func RolebindingWatcher(clientset *kubernetes.Clientset, log logr.Logger) {
 					return
 				}
 
-				log.Info("rolebinding deleted: %s \n", obj)
+				log.Info("rolebinding deleted: %s \n", obj.(*rbacv1.RoleBinding).Subjects[0].Name)
 				views.AddRoleBinding("deleted", "test", obj.(*rbacv1.RoleBinding))
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
